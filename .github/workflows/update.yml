@@ -2,7 +2,7 @@ name: まとめ更新
 
 on:
   schedule:
-    - cron: "*/20 * * * *"   # 20分ごと（GitHub側の混雑で数分遅れることがあります）
+    - cron: "7,27,47 * * * *"   # 20分ごと（毎時7・27・47分。混雑する0分ちょうどを避けています）
   workflow_dispatch:          # 手動実行ボタン
   push:
     paths: ["feeds.txt", "ng_words.txt", "build.py"]

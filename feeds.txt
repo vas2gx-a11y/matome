@@ -1,0 +1,32 @@
+# 登録ブログ一覧（1行に1サイト）
+# 書き方:  表示名 | ブログのURL
+# ・ブログのトップページURLでOK（RSSは自動で探します）
+# ・RSSのURLが分かっていれば、そちらを書くとより確実です
+# ・行頭に # を付けるとその行は無効になります
+
+ゴールデンタイムズ | http://blog.livedoor.jp/goldennews/
+痛いニュース(ﾉ∀`) | http://blog.livedoor.jp/dqnplus/
+哲学ニュースnwk | http://blog.livedoor.jp/nwknews/
+カオスちゃんねる | http://chaos2ch.com/
+【2ch】ニュー速クオリティ | http://news4vip.livedoor.biz/
+アルファルファモザイク | http://alfalfalfa.com/
+もみあげチャ～シュ～ | http://michaelsan.livedoor.biz/
+footballnet【サッカーまとめ】 | http://footballnet.2chblog.jp/
+日刊やきう速報 | http://blog.livedoor.jp/yakiusoku/
+ライフハックちゃんねる弐式 | http://lifehack2ch.livedoor.biz/
+ほんわかMkII | http://honwaka2ch.livedoor.biz/
+あやしいNEWS 2nd | http://ayacnews2nd.com/
+VIPPERな俺 | http://blog.livedoor.jp/news23vip/
+IT速報 | http://blog.livedoor.jp/itsoku/
+2chコピペ保存道場 | http://2chcopipe.com/
+NO FOOTY NO LIFE | http://nofootynolife.blog.fc2.com/
+働くモノニュース | http://workingnews.blog117.fc2.com/
+市況かぶ全力2階建 | http://kabumatome.doorblog.jp/
+お料理速報 | http://oryouri.2chblog.jp/
+あにこ便 | http://anicobin.ldblog.jp/
+ふぇー速 | http://fesoku.net/
+コノユビニュース | https://konoyubitomare.jp/
+デジタルニューススレッド | http://digital-thread.com/
+
+# ↓URLが未確認のサイト。MTEアプリやブラウザでURLを確認して書き換え、先頭の # を外してください
+# NEWSまとめもりー | https://ここにURL/

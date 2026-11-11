@@ -1,0 +1,32 @@
+name: まとめ更新
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"   # 20分ごと（GitHub側の混雑で数分遅れることがあります）
+  workflow_dispatch:          # 手動実行ボタン
+  push:
+    paths: ["feeds.txt", "ng_words.txt", "build.py"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python build.py
+      - name: 変更を保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add docs
+          git diff --cached --quiet || git commit -m "update $(date +'%m/%d %H:%M')"
+          git push

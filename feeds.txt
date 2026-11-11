@@ -30,3 +30,6 @@ NO FOOTY NO LIFE | https://nofootynolife.net/?xml
 
 # ↓URLが未確認のサイト。MTEアプリやブラウザでURLを確認して書き換え、先頭の # を外してください
 # NEWSまとめもりー | https://ここにURL/
+FX2ちゃんねる | http://fx2ch.net/
+Yahoo!ニュース 経済 | https://news.yahoo.co.jp/rss/topics/business.xml
+東洋経済オンライン | https://toyokeizai.net/list/feed/rss

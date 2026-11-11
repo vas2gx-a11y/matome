@@ -17,6 +17,7 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).parent
 DOCS = ROOT / "docs"
 DATA = DOCS / "items.json"
+SITES = DOCS / "sites.json"   # サイトごとの最終更新（取得失敗時は前回の値を使う）
 JST = timezone(timedelta(hours=9))
 KEEP_DAYS = 3          # 何日分の記事を残すか
 MAX_ITEMS = 1000       # 最大表示件数
@@ -177,11 +178,22 @@ def main():
             pass
 
     new, errors = [], []
+    prev_sites = {}
+    if SITES.exists():
+        try:
+            prev_sites = {x["name"]: x for x in json.loads(SITES.read_text(encoding="utf-8"))}
+        except Exception:
+            pass
+    sites = []
     with cf.ThreadPoolExecutor(8) as ex:
-        for items, err in ex.map(get_one, feeds):
+        for (name, url), (items, err) in zip(feeds, ex.map(get_one, feeds)):
             new += items
             if err:
                 errors.append(err)
+            label = name or (items[0]["blog"] if items else url)
+            last = max((i["ts"] for i in items), default=None) or prev_sites.get(label, {}).get("last")
+            sites.append({"name": label, "url": url, "cat": CATS.get(name, DEFAULT_CAT),
+                          "last": last, "err": bool(err)})
 
     cutoff = int((datetime.now(JST) - timedelta(days=KEEP_DAYS)).timestamp())
     now = int(datetime.now(JST).timestamp()) + 600
@@ -204,10 +216,12 @@ def main():
     merged = merged[:MAX_ITEMS]
 
     DOCS.mkdir(exist_ok=True)
+    SITES.write_text(json.dumps(sites, ensure_ascii=False), encoding="utf-8")
     DATA.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
     page = TEMPLATE.replace("/*DATA*/", json.dumps(merged, ensure_ascii=False).replace("</", "<\\/"))
     cat_order = list(dict.fromkeys(list(CATS.values()) + [DEFAULT_CAT]))
     page = page.replace("/*CATS*/", json.dumps({"map": CATS, "order": cat_order}, ensure_ascii=False).replace("</", "<\\/"))
+    page = page.replace("/*SITES*/", json.dumps(sites, ensure_ascii=False).replace("</", "<\\/"))
     page = page.replace("{{UPDATED}}", datetime.now(JST).strftime("%m/%d %H:%M"))
     page = page.replace("{{ERRORS}}", html.escape(" / ".join(errors)))
     (DOCS / "index.html").write_text(page, encoding="utf-8")
@@ -260,6 +274,10 @@ li.read .t{color:var(--read)}
 .chips::-webkit-scrollbar{display:none}
 .chips button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:6px 12px;font-size:13px}
 .chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.site{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;background:var(--card);border-bottom:1px solid var(--line);font-size:14px}
+.site .last{flex:none;font-size:12px;color:var(--sub)}
+.site.stale .last{color:#ff453a}
+.cathead{padding:14px 12px 6px;font-size:12px;font-weight:600;color:var(--sub)}
 .err{font-size:11px;color:#ff453a;padding:8px 12px}
 .err:empty{display:none}
 .btn{border:none;background:none;color:var(--accent);font-size:13px;padding:4px}
@@ -271,6 +289,7 @@ nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>
  <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 {{UPDATED}} ↻</button>
+ <button class="btn" id="sitesBtn">登録サイト</button>
  <button class="btn" id="allRead">全部既読</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
 </header>
@@ -288,6 +307,7 @@ nav button.on{color:var(--accent);font-weight:600}
 <script>
 const ITEMS=/*DATA*/;
 const CATS=/*CATS*/;
+const SITES=/*SITES*/;
 const catOf=i=>CATS.map[i.blog]||"総合・雑談";
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60,cat=store.get("cat",CATS.order[0]);
@@ -324,7 +344,15 @@ function render(){
  const q=$("q").value.trim();
  const list=source().filter(i=>!q||i.title.includes(q));
  document.querySelectorAll("nav button").forEach(b=>{b.classList.toggle("on",b.dataset.tab===tab)});
- $("ttl").textContent={latest:"最新",rec:"おすすめ",cat:"カテゴリー",bm:"ブックマーク"}[tab];
+ $("ttl").textContent={latest:"最新",rec:"おすすめ",cat:"カテゴリー",bm:"ブックマーク",sites:"登録サイト"}[tab];
+ $("q").style.display=$("more").style.display=tab==="sites"?"none":"";
+ if(tab==="sites"){$("hint").style.display="block";$("hint").textContent=`${SITES.length}サイト登録中。最終更新が7日以上前のサイトは赤で表示します`;
+  $("allRead").style.visibility="hidden";$("chips").style.display="none";
+  const fmt=ts=>{if(!ts)return"記事なし";const d=new Date(ts*1000);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
+  $("list").innerHTML=CATS.order.map(c=>{const ss=SITES.filter(x=>x.cat===c);if(!ss.length)return"";
+   return `<div class="cathead">${esc(c)}</div>`+ss.map(x=>{const stale=!x.last||Date.now()/1000-x.last>7*86400;
+    return `<div class="site${stale?" stale":""}"><span>${esc(x.name)}</span><span class="last">${x.err?"取得失敗・":""}${fmt(x.last)}</span></div>`}).join("")}).join("");
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));return}
  $("chips").style.display=tab==="cat"?"flex":"none";
  $("chips").innerHTML=CATS.order.map(c=>`<button class="${c===cat?"on":""}" data-c="${esc(c)}">${esc(c)}（${ITEMS.filter(i=>catOf(i)===c).length}）</button>`).join("");
  document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;store.set("cat",cat);shown=60;window.scrollTo(0,0);render()});
@@ -343,6 +371,7 @@ function render(){
   if(bm[l])delete bm[l];else{const it=ITEMS.find(i=>i.link===l);if(it){const{dups,score,why,...x}=it;bm[l]={...x,saved:Date.now()};addHist(it,2)}}
   store.set("bm",bm);render()})}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;store.set("tab",tab);shown=60;window.scrollTo(0,0);render()});
+$("sitesBtn").onclick=()=>{tab="sites";window.scrollTo(0,0);render()};
 $("q").oninput=()=>{shown=60;render()};
 $("more").onclick=()=>{shown+=60;render()};
 $("allRead").onclick=()=>{if(!confirm("表示中の記事をすべて既読にしますか？"))return;ITEMS.forEach(i=>read.add(i.link));saveRead();render()};

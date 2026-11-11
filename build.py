@@ -19,7 +19,7 @@ DOCS = ROOT / "docs"
 DATA = DOCS / "items.json"
 JST = timezone(timedelta(hours=9))
 KEEP_DAYS = 3          # 何日分の記事を残すか
-MAX_ITEMS = 600        # 最大表示件数
+MAX_ITEMS = 1000       # 最大表示件数
 UA = "Mozilla/5.0 (personal RSS reader; matome-antenna)"
 
 # ---------- 設定ファイル読み込み ----------

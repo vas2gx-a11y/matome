@@ -225,6 +225,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 :root{--bg:#f4f4f6;--card:#fff;--text:#1c1c1e;--sub:#8e8e93;--line:#e5e5ea;--accent:#0a84ff;--read:#aeaeb2;--star:#ff9f0a}
 @media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--text:#f2f2f7;--sub:#8e8e93;--line:#2c2c2e;--read:#636366}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Hiragino Sans",sans-serif;padding-bottom:calc(env(safe-area-inset-bottom) + 60px)}
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;border-bottom:1px solid var(--line)}
 .top{display:flex;align-items:center;gap:8px}

@@ -247,6 +247,8 @@ li.read .t{color:var(--read)}
 .star.on{color:var(--star)}
 .dups{padding:0 12px 9px 86px;font-size:11px}
 .dups a{color:var(--accent);margin-right:8px;text-decoration:none}
+.why{color:var(--accent)}
+.hint{font-size:12px;color:var(--sub);padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line)}
 .err{font-size:11px;color:#ff453a;padding:8px 12px}
 .err:empty{display:none}
 .btn{border:none;background:none;color:var(--accent);font-size:13px;padding:4px}
@@ -262,11 +264,13 @@ nav button.on{color:var(--accent);font-weight:600}
  <input id="q" type="search" placeholder="キーワードで絞り込み">
 </header>
 <div class="err">{{ERRORS}}</div>
+<div class="hint" id="hint"></div>
 <ul id="list"></ul>
 <button id="more">もっと見る</button>
 <nav>
  <button data-tab="latest">最新</button>
  <button data-tab="unread">未読</button>
+ <button data-tab="rec">おすすめ</button>
  <button data-tab="bm">★ ブックマーク</button>
 </nav>
 <script>
@@ -278,10 +282,27 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 // 記事は同じタブで開く（戻るでアンテナに戻る）
 const href=l=>`href="${esc(l)}"`;
 const saveRead=()=>store.set("read",[...read].slice(-3000));
+// ---- おすすめ：自分が読んだ記事（ブログ・キーワード）の傾向で並べる ----
+let hist=store.get("hist",[]);  // 開いた・★した記事の {b:ブログ, t:タイトル}
+const STOP=new Set(["悲報","朗報","速報","画像","動画","衝撃","疑問","議論","海外の反応","ワイ","ｗｗｗ","これ","それ","あれ","さん","ちゃん","まとめ","話題","結果"]);
+function words(t){t=t.replace(/【[^】]*】|\[[^\]]*\]/g," ");
+ return [...new Set((t.match(/[一-龠々]{2,}|[ァ-ヶー]{2,}|[A-Za-zＡ-Ｚａ-ｚ0-9０-９]{3,}/g)||[]).filter(w=>!STOP.has(w)))]}
+function addHist(it,w=1){if(!it)return;for(let k=0;k<w;k++)hist.push({b:it.blog,t:it.title});hist=hist.slice(-600);store.set("hist",hist)}
+function recommend(){
+ const bc={},wc={};hist.forEach(h=>{bc[h.b]=(bc[h.b]||0)+1;words(h.t).forEach(w=>wc[w]=(wc[w]||0)+1)});
+ const n=hist.length,nb=Object.keys(bc).length||1,now=Date.now()/1000;
+ return ITEMS.filter(i=>!read.has(i.link)&&now-i.ts<48*3600).map(i=>{
+  const blog=(bc[i.blog]||0)/n*nb;              // そのブログをどれだけ多く読むか（平均=1）
+  const hits=words(i.title).filter(w=>wc[w]>=2).sort((a,b)=>wc[b]-wc[a]);
+  const kw=hits.reduce((s,w)=>s+Math.log(1+wc[w]),0);
+  const score=(blog*1.5+kw+(i.dups?i.dups.length*0.5:0))*Math.exp(-(now-i.ts)/(36*3600));
+  const why=hits.length?"よく読む話題: "+hits.slice(0,2).join("・"):blog>1.3?"よく読むブログ":"";
+  return {...i,score,why}}).sort((a,b)=>b.score-a.score)}
 function ago(ts){const m=Math.floor((Date.now()/1000-ts)/60);if(m<60)return Math.max(m,0)+"分前";if(m<1440)return Math.floor(m/60)+"時間前";const d=new Date(ts*1000);return (d.getMonth()+1)+"/"+d.getDate()}
 function source(){
  if(tab==="bm")return Object.values(bm).sort((a,b)=>b.saved-a.saved);
  if(tab==="unread")return ITEMS.filter(i=>!read.has(i.link));
+ if(tab==="rec")return hist.length<10?ITEMS.filter(i=>!read.has(i.link)):recommend();
  return ITEMS}
 function render(){
  const q=$("q").value.trim();
@@ -289,18 +310,20 @@ function render(){
  const unread=ITEMS.filter(i=>!read.has(i.link)).length;
  document.querySelectorAll("nav button").forEach(b=>{b.classList.toggle("on",b.dataset.tab===tab);
   if(b.dataset.tab==="unread")b.textContent="未読"+(unread?`（${unread}）`:"")});
- $("ttl").textContent={latest:"最新",unread:"未読",bm:"ブックマーク"}[tab];
+ $("ttl").textContent={latest:"最新",unread:"未読",rec:"おすすめ",bm:"ブックマーク"}[tab];
+ $("hint").style.display=tab==="rec"?"block":"none";
+ $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間の未読）";
  $("allRead").style.visibility=tab==="bm"?"hidden":"visible";
  $("list").innerHTML=list.length?list.slice(0,shown).map(i=>{const r=read.has(i.link);return `<li class="${r?"read":"unread"}"><div class="row"><a class="m" ${href(i.link)} data-l="${esc(i.link)}">
  ${i.img?`<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${esc(i.img)}" onerror="this.style.visibility='hidden'">`:`<div class="thumb"></div>`}
- <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}</div></div></a>
+ <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
  <button class="star${bm[i.link]?" on":""}" data-l="${esc(i.link)}" aria-label="ブックマーク">★</button></div>
  ${i.dups?`<div class="dups">他でも: ${i.dups.map(d=>`<a ${href(d.link)}>${esc(d.blog)}</a>`).join("")}</div>`:""}</li>`}).join("")
  :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":tab==="unread"?"未読の記事はありません":"記事がありません"}</div>`;
  $("more").style.display=list.length>shown?"block":"none";
- document.querySelectorAll("a.m").forEach(a=>a.onclick=()=>{read.add(a.dataset.l);saveRead();setTimeout(render,300)});
+ document.querySelectorAll("a.m").forEach(a=>a.onclick=()=>{if(!read.has(a.dataset.l))addHist(ITEMS.find(i=>i.link===a.dataset.l));read.add(a.dataset.l);saveRead();setTimeout(render,300)});
  document.querySelectorAll(".star").forEach(b=>b.onclick=()=>{const l=b.dataset.l;
-  if(bm[l])delete bm[l];else{const it=ITEMS.find(i=>i.link===l);if(it){const{dups,...x}=it;bm[l]={...x,saved:Date.now()}}}
+  if(bm[l])delete bm[l];else{const it=ITEMS.find(i=>i.link===l);if(it){const{dups,score,why,...x}=it;bm[l]={...x,saved:Date.now()};addHist(it,2)}}
   store.set("bm",bm);render()})}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;store.set("tab",tab);shown=60;window.scrollTo(0,0);render()});
 $("q").oninput=()=>{shown=60;render()};
@@ -311,7 +334,7 @@ $("reload").onclick=()=>location.reload();
 let hiddenAt=0;
 document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(hiddenAt&&Date.now()-hiddenAt>15*60*1000)location.reload()});
 // 同じタブで記事を開いて「戻る」したとき、既読を反映し直す
-window.addEventListener("pageshow",e=>{if(e.persisted){read=new Set(store.get("read",[]));bm=store.get("bm",{});render()}});
+window.addEventListener("pageshow",e=>{if(e.persisted){read=new Set(store.get("read",[]));bm=store.get("bm",{});hist=store.get("hist",[]);render()}});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 render();
 </script></body></html>"""

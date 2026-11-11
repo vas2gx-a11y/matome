@@ -211,7 +211,7 @@ def main():
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ja"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="まとめ">
@@ -254,7 +254,7 @@ li.read .t{color:var(--read)}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;border:none;background:none;padding:10px 0;font-size:13px;color:var(--sub)}
 .br{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--sub)}
-.br select{font-size:12px;border:none;border-radius:6px;padding:2px 4px;background:var(--card);color:var(--text)}
+.br select{font-size:16px;border:none;border-radius:6px;padding:2px 4px;background:var(--card);color:var(--text)}
 nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>

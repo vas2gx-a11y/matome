@@ -253,16 +253,12 @@ li.read .t{color:var(--read)}
 #more{display:block;width:100%;padding:16px;border:none;background:none;color:var(--accent);font-size:15px}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;border:none;background:none;padding:10px 0;font-size:13px;color:var(--sub)}
-.br{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--sub)}
-.br select{font-size:16px;border:none;border-radius:6px;padding:2px 4px;background:var(--card);color:var(--text)}
 nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>
  <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 {{UPDATED}} ↻</button>
  <button class="btn" id="allRead">全部既読</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
- <label class="br">記事を開くブラウザ
-  <select id="br"><option value="">標準（新しいタブ）</option><option value="same">同じタブ</option><option value="brave">Brave</option><option value="focus">Firefox Focus</option></select></label>
 </header>
 <div class="err">{{ERRORS}}</div>
 <ul id="list"></ul>
@@ -278,10 +274,8 @@ const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e)
 let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const BR={brave:"brave://open-url?url=",focus:"firefox-focus://open-url?url="};
-let br=store.get("br","");
-// 選んだブラウザのアプリで開くリンクにする（標準なら新しいタブ）
-const href=l=>BR[br]?`href="${esc(BR[br]+encodeURIComponent(l))}"`:br==="same"?`href="${esc(l)}"`:`href="${esc(l)}" target="_blank" rel="noopener"`;
+// 記事は同じタブで開く（戻るでアンテナに戻る）
+const href=l=>`href="${esc(l)}"`;
 const saveRead=()=>store.set("read",[...read].slice(-3000));
 function ago(ts){const m=Math.floor((Date.now()/1000-ts)/60);if(m<60)return Math.max(m,0)+"分前";if(m<1440)return Math.floor(m/60)+"時間前";const d=new Date(ts*1000);return (d.getMonth()+1)+"/"+d.getDate()}
 function source(){
@@ -308,7 +302,6 @@ function render(){
   if(bm[l])delete bm[l];else{const it=ITEMS.find(i=>i.link===l);if(it){const{dups,...x}=it;bm[l]={...x,saved:Date.now()}}}
   store.set("bm",bm);render()})}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;store.set("tab",tab);shown=60;window.scrollTo(0,0);render()});
-$("br").value=br;$("br").onchange=()=>{br=$("br").value;store.set("br",br);render()};
 $("q").oninput=()=>{shown=60;render()};
 $("more").onclick=()=>{shown+=60;render()};
 $("allRead").onclick=()=>{if(!confirm("表示中の記事をすべて既読にしますか？"))return;ITEMS.forEach(i=>read.add(i.link));saveRead();render()};

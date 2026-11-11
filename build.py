@@ -29,13 +29,18 @@ def read_lines(path):
     return [l.strip() for l in path.read_text(encoding="utf-8").splitlines()
             if l.strip() and not l.strip().startswith("#")]
 
+DEFAULT_CAT = "総合・雑談"
+CATS = {}   # 表示名 → カテゴリー（feeds.txt の3列目）
+
 def load_feeds():
     feeds = []
     for line in read_lines(ROOT / "feeds.txt"):
-        if "|" in line:
-            name, url = [x.strip() for x in line.split("|", 1)]
-        else:
-            name, url = "", line
+        parts = [x.strip() for x in line.split("|")]
+        if len(parts) == 1:
+            parts = ["", parts[0]]
+        name, url = parts[0], parts[1]
+        if name:
+            CATS[name] = (parts[2] if len(parts) > 2 and parts[2] else DEFAULT_CAT)
         feeds.append((name, url))
     return feeds
 
@@ -201,6 +206,8 @@ def main():
     DOCS.mkdir(exist_ok=True)
     DATA.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
     page = TEMPLATE.replace("/*DATA*/", json.dumps(merged, ensure_ascii=False).replace("</", "<\\/"))
+    cat_order = list(dict.fromkeys(list(CATS.values()) + [DEFAULT_CAT]))
+    page = page.replace("/*CATS*/", json.dumps({"map": CATS, "order": cat_order}, ensure_ascii=False).replace("</", "<\\/"))
     page = page.replace("{{UPDATED}}", datetime.now(JST).strftime("%m/%d %H:%M"))
     page = page.replace("{{ERRORS}}", html.escape(" / ".join(errors)))
     (DOCS / "index.html").write_text(page, encoding="utf-8")
@@ -249,6 +256,10 @@ li.read .t{color:var(--read)}
 .dups a{color:var(--accent);margin-right:8px;text-decoration:none}
 .why{color:var(--accent)}
 .hint{font-size:12px;color:var(--sub);padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+.chips{display:none;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:6px 12px;font-size:13px}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .err{font-size:11px;color:#ff453a;padding:8px 12px}
 .err:empty{display:none}
 .btn{border:none;background:none;color:var(--accent);font-size:13px;padding:4px}
@@ -265,17 +276,22 @@ nav button.on{color:var(--accent);font-weight:600}
 </header>
 <div class="err">{{ERRORS}}</div>
 <div class="hint" id="hint"></div>
+<div class="chips" id="chips"></div>
 <ul id="list"></ul>
 <button id="more">もっと見る</button>
 <nav>
  <button data-tab="latest">最新</button>
  <button data-tab="rec">おすすめ</button>
+ <button data-tab="cat">カテゴリー</button>
  <button data-tab="bm">★ ブックマーク</button>
 </nav>
 <script>
 const ITEMS=/*DATA*/;
+const CATS=/*CATS*/;
+const catOf=i=>CATS.map[i.blog]||"総合・雑談";
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60;
+let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60,cat=store.get("cat",CATS.order[0]);
+if(!CATS.order.includes(cat))cat=CATS.order[0];
 if(tab==="unread")tab="latest";  // 廃止した未読タブを選んでいた人向け
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -301,13 +317,17 @@ function recommend(){
 function ago(ts){const m=Math.floor((Date.now()/1000-ts)/60);if(m<60)return Math.max(m,0)+"分前";if(m<1440)return Math.floor(m/60)+"時間前";const d=new Date(ts*1000);return (d.getMonth()+1)+"/"+d.getDate()}
 function source(){
  if(tab==="bm")return Object.values(bm).sort((a,b)=>b.saved-a.saved);
+ if(tab==="cat")return ITEMS.filter(i=>catOf(i)===cat);
  if(tab==="rec")return hist.length<10?ITEMS:recommend();
  return ITEMS}
 function render(){
  const q=$("q").value.trim();
  const list=source().filter(i=>!q||i.title.includes(q));
  document.querySelectorAll("nav button").forEach(b=>{b.classList.toggle("on",b.dataset.tab===tab)});
- $("ttl").textContent={latest:"最新",rec:"おすすめ",bm:"ブックマーク"}[tab];
+ $("ttl").textContent={latest:"最新",rec:"おすすめ",cat:"カテゴリー",bm:"ブックマーク"}[tab];
+ $("chips").style.display=tab==="cat"?"flex":"none";
+ $("chips").innerHTML=CATS.order.map(c=>`<button class="${c===cat?"on":""}" data-c="${esc(c)}">${esc(c)}（${ITEMS.filter(i=>catOf(i)===c).length}）</button>`).join("");
+ document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;store.set("cat",cat);shown=60;window.scrollTo(0,0);render()});
  $("hint").style.display=tab==="rec"?"block":"none";
  $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間）";
  $("allRead").style.visibility=tab==="bm"?"hidden":"visible";

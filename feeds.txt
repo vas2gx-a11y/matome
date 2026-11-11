@@ -1,35 +1,47 @@
 # 登録ブログ一覧（1行に1サイト）
-# 書き方:  表示名 | ブログのURL
+# 書き方:  表示名 | ブログのURL | カテゴリー
 # ・ブログのトップページURLでOK（RSSは自動で探します）
 # ・RSSのURLが分かっていれば、そちらを書くとより確実です
+# ・カテゴリーは省略すると「総合・雑談」になります。新しい名前を書けば新しいカテゴリーができます
 # ・行頭に # を付けるとその行は無効になります
 
-ゴールデンタイムズ | http://blog.livedoor.jp/goldennews/
-痛いニュース(ﾉ∀`) | http://blog.livedoor.jp/dqnplus/
-哲学ニュースnwk | http://blog.livedoor.jp/nwknews/
-カオスちゃんねる | http://chaos2ch.com/
-【2ch】ニュー速クオリティ | http://news4vip.livedoor.biz/
-アルファルファモザイク | http://alfalfalfa.com/
-もみあげチャ～シュ～ | http://michaelsan.livedoor.biz/
-footballnet【サッカーまとめ】 | http://footballnet.2chblog.jp/
-日刊やきう速報 | http://blog.livedoor.jp/yakiusoku/
-ライフハックちゃんねる弐式 | http://lifehack2ch.livedoor.biz/
-ほんわかMkII | http://honwaka2ch.livedoor.biz/
-あやしいNEWS 2nd | http://ayacnews2nd.com/
-VIPPERな俺 | http://blog.livedoor.jp/news23vip/
-IT速報 | http://blog.livedoor.jp/itsoku/
-2chコピペ保存道場 | http://2chcopipe.com/
-NO FOOTY NO LIFE | https://nofootynolife.net/?xml
-働くモノニュース | http://workingnews117.com/?xml
-市況かぶ全力2階建 | http://kabumatome.doorblog.jp/
-お料理速報 | http://oryouri.2chblog.jp/
-あにこ便 | http://anicobin.ldblog.jp/
-ふぇー速 | http://fesoku.net/
-コノユビニュース | https://konoyubitomare.jp/
-デジタルニューススレッド | http://digital-thread.com/
+# --- 経済・株 ---
+市況かぶ全力2階建 | http://kabumatome.doorblog.jp/ | 経済・株
+FX2ちゃんねる | http://fx2ch.net/ | 経済・株
+Yahoo!ニュース 経済 | https://news.yahoo.co.jp/rss/topics/business.xml | 経済・株
+東洋経済オンライン | https://toyokeizai.net/list/feed/rss | 経済・株
+
+# --- IT・ガジェット ---
+IT速報 | http://blog.livedoor.jp/itsoku/ | IT・ガジェット
+デジタルニューススレッド | http://digital-thread.com/ | IT・ガジェット
+
+# --- スポーツ ---
+日刊やきう速報 | http://blog.livedoor.jp/yakiusoku/ | スポーツ
+footballnet【サッカーまとめ】 | http://footballnet.2chblog.jp/ | スポーツ
+NO FOOTY NO LIFE | https://nofootynolife.net/?xml | スポーツ
+
+# --- 生活・料理 ---
+ライフハックちゃんねる弐式 | http://lifehack2ch.livedoor.biz/ | 生活・料理
+お料理速報 | http://oryouri.2chblog.jp/ | 生活・料理
+ほんわかMkII | http://honwaka2ch.livedoor.biz/ | 生活・料理
+
+# --- ニュース・社会 ---
+痛いニュース(ﾉ∀`) | http://blog.livedoor.jp/dqnplus/ | ニュース・社会
+コノユビニュース | https://konoyubitomare.jp/ | ニュース・社会
+あやしいNEWS 2nd | http://ayacnews2nd.com/ | ニュース・社会
+働くモノニュース | http://workingnews117.com/?xml | ニュース・社会
+
+# --- 総合・雑談 ---
+ゴールデンタイムズ | http://blog.livedoor.jp/goldennews/ | 総合・雑談
+哲学ニュースnwk | http://blog.livedoor.jp/nwknews/ | 総合・雑談
+カオスちゃんねる | http://chaos2ch.com/ | 総合・雑談
+【2ch】ニュー速クオリティ | http://news4vip.livedoor.biz/ | 総合・雑談
+アルファルファモザイク | http://alfalfalfa.com/ | 総合・雑談
+もみあげチャ～シュ～ | http://michaelsan.livedoor.biz/ | 総合・雑談
+VIPPERな俺 | http://blog.livedoor.jp/news23vip/ | 総合・雑談
+2chコピペ保存道場 | http://2chcopipe.com/ | 総合・雑談
+あにこ便 | http://anicobin.ldblog.jp/ | 総合・雑談
+ふぇー速 | http://fesoku.net/ | 総合・雑談
 
 # ↓URLが未確認のサイト。MTEアプリやブラウザでURLを確認して書き換え、先頭の # を外してください
-# NEWSまとめもりー | https://ここにURL/
-FX2ちゃんねる | http://fx2ch.net/
-Yahoo!ニュース 経済 | https://news.yahoo.co.jp/rss/topics/business.xml
-東洋経済オンライン | https://toyokeizai.net/list/feed/rss
+# NEWSまとめもりー | https://ここにURL/ | 総合・雑談

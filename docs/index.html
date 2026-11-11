@@ -5,6 +5,11 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="まとめ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4f4f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>まとめアンテナ</title>
 <style>
 :root{--bg:#f4f4f6;--card:#fff;--text:#1c1c1e;--sub:#8e8e93;--line:#e5e5ea;--accent:#0a84ff;--read:#aeaeb2;--star:#ff9f0a}
@@ -15,6 +20,7 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(saf
 .top{display:flex;align-items:center;gap:8px}
 h1{font-size:18px;margin:0;flex:1}
 .upd{font-size:11px;color:var(--sub)}
+button.upd{color:var(--sub);font-size:11px}
 input{width:100%;margin-top:8px;padding:9px 12px;border:none;border-radius:10px;background:var(--card);color:var(--text);font-size:16px}
 ul{list-style:none;margin:0;padding:0}
 li{background:var(--card);border-bottom:1px solid var(--line)}
@@ -40,7 +46,7 @@ nav button{flex:1;border:none;background:none;padding:10px 0;font-size:13px;colo
 nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>
- <div class="top"><h1 id="ttl">最新</h1><span class="upd">更新 11/11 13:15</span>
+ <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 11/11 13:18 ↻</button>
  <button class="btn" id="allRead">全部既読</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
 </header>
@@ -87,5 +93,10 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.
 $("q").oninput=()=>{shown=60;render()};
 $("more").onclick=()=>{shown+=60;render()};
 $("allRead").onclick=()=>{if(!confirm("表示中の記事をすべて既読にしますか？"))return;ITEMS.forEach(i=>read.add(i.link));saveRead();render()};
+$("reload").onclick=()=>location.reload();
+// アプリ版は再読み込みボタンがないので、15分以上離れてから戻ったら自動で最新にする
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(hiddenAt&&Date.now()-hiddenAt>15*60*1000)location.reload()});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 render();
 </script></body></html>

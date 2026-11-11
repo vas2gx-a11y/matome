@@ -269,7 +269,6 @@ nav button.on{color:var(--accent);font-weight:600}
 <button id="more">もっと見る</button>
 <nav>
  <button data-tab="latest">最新</button>
- <button data-tab="unread">未読</button>
  <button data-tab="rec">おすすめ</button>
  <button data-tab="bm">★ ブックマーク</button>
 </nav>
@@ -277,6 +276,7 @@ nav button.on{color:var(--accent);font-weight:600}
 const ITEMS=/*DATA*/;
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60;
+if(tab==="unread")tab="latest";  // 廃止した未読タブを選んでいた人向け
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // 記事は同じタブで開く（戻るでアンテナに戻る）
@@ -291,7 +291,7 @@ function addHist(it,w=1){if(!it)return;for(let k=0;k<w;k++)hist.push({b:it.blog,
 function recommend(){
  const bc={},wc={};hist.forEach(h=>{bc[h.b]=(bc[h.b]||0)+1;words(h.t).forEach(w=>wc[w]=(wc[w]||0)+1)});
  const n=hist.length,nb=Object.keys(bc).length||1,now=Date.now()/1000;
- return ITEMS.filter(i=>!read.has(i.link)&&now-i.ts<48*3600).map(i=>{
+ return ITEMS.filter(i=>now-i.ts<48*3600).map(i=>{
   const blog=(bc[i.blog]||0)/n*nb;              // そのブログをどれだけ多く読むか（平均=1）
   const hits=words(i.title).filter(w=>wc[w]>=2).sort((a,b)=>wc[b]-wc[a]);
   const kw=hits.reduce((s,w)=>s+Math.log(1+wc[w]),0);
@@ -301,25 +301,22 @@ function recommend(){
 function ago(ts){const m=Math.floor((Date.now()/1000-ts)/60);if(m<60)return Math.max(m,0)+"分前";if(m<1440)return Math.floor(m/60)+"時間前";const d=new Date(ts*1000);return (d.getMonth()+1)+"/"+d.getDate()}
 function source(){
  if(tab==="bm")return Object.values(bm).sort((a,b)=>b.saved-a.saved);
- if(tab==="unread")return ITEMS.filter(i=>!read.has(i.link));
- if(tab==="rec")return hist.length<10?ITEMS.filter(i=>!read.has(i.link)):recommend();
+ if(tab==="rec")return hist.length<10?ITEMS:recommend();
  return ITEMS}
 function render(){
  const q=$("q").value.trim();
  const list=source().filter(i=>!q||i.title.includes(q));
- const unread=ITEMS.filter(i=>!read.has(i.link)).length;
- document.querySelectorAll("nav button").forEach(b=>{b.classList.toggle("on",b.dataset.tab===tab);
-  if(b.dataset.tab==="unread")b.textContent="未読"+(unread?`（${unread}）`:"")});
- $("ttl").textContent={latest:"最新",unread:"未読",rec:"おすすめ",bm:"ブックマーク"}[tab];
+ document.querySelectorAll("nav button").forEach(b=>{b.classList.toggle("on",b.dataset.tab===tab)});
+ $("ttl").textContent={latest:"最新",rec:"おすすめ",bm:"ブックマーク"}[tab];
  $("hint").style.display=tab==="rec"?"block":"none";
- $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間の未読）";
+ $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間）";
  $("allRead").style.visibility=tab==="bm"?"hidden":"visible";
  $("list").innerHTML=list.length?list.slice(0,shown).map(i=>{const r=read.has(i.link);return `<li class="${r?"read":"unread"}"><div class="row"><a class="m" ${href(i.link)} data-l="${esc(i.link)}">
  ${i.img?`<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${esc(i.img)}" onerror="this.style.visibility='hidden'">`:`<div class="thumb"></div>`}
  <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
  <button class="star${bm[i.link]?" on":""}" data-l="${esc(i.link)}" aria-label="ブックマーク">★</button></div>
  ${i.dups?`<div class="dups">他でも: ${i.dups.map(d=>`<a ${href(d.link)}>${esc(d.blog)}</a>`).join("")}</div>`:""}</li>`}).join("")
- :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":tab==="unread"?"未読の記事はありません":"記事がありません"}</div>`;
+ :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":"記事がありません"}</div>`;
  $("more").style.display=list.length>shown?"block":"none";
  document.querySelectorAll("a.m").forEach(a=>a.onclick=()=>{if(!read.has(a.dataset.l))addHist(ITEMS.find(i=>i.link===a.dataset.l));read.add(a.dataset.l);saveRead();setTimeout(render,300)});
  document.querySelectorAll(".star").forEach(b=>b.onclick=()=>{const l=b.dataset.l;

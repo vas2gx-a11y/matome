@@ -262,7 +262,7 @@ nav button.on{color:var(--accent);font-weight:600}
  <button class="btn" id="allRead">全部既読</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
  <label class="br">記事を開くブラウザ
-  <select id="br"><option value="">標準（Safari）</option><option value="brave">Brave</option><option value="focus">Firefox Focus</option></select></label>
+  <select id="br"><option value="">標準（新しいタブ）</option><option value="same">同じタブ</option><option value="brave">Brave</option><option value="focus">Firefox Focus</option></select></label>
 </header>
 <div class="err">{{ERRORS}}</div>
 <ul id="list"></ul>
@@ -281,7 +281,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const BR={brave:"brave://open-url?url=",focus:"firefox-focus://open-url?url="};
 let br=store.get("br","");
 // 選んだブラウザのアプリで開くリンクにする（標準なら新しいタブ）
-const href=l=>BR[br]?`href="${esc(BR[br]+encodeURIComponent(l))}"`:`href="${esc(l)}" target="_blank" rel="noopener"`;
+const href=l=>BR[br]?`href="${esc(BR[br]+encodeURIComponent(l))}"`:br==="same"?`href="${esc(l)}"`:`href="${esc(l)}" target="_blank" rel="noopener"`;
 const saveRead=()=>store.set("read",[...read].slice(-3000));
 function ago(ts){const m=Math.floor((Date.now()/1000-ts)/60);if(m<60)return Math.max(m,0)+"分前";if(m<1440)return Math.floor(m/60)+"時間前";const d=new Date(ts*1000);return (d.getMonth()+1)+"/"+d.getDate()}
 function source(){
@@ -316,6 +316,8 @@ $("reload").onclick=()=>location.reload();
 // アプリ版は再読み込みボタンがないので、15分以上離れてから戻ったら自動で最新にする
 let hiddenAt=0;
 document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(hiddenAt&&Date.now()-hiddenAt>15*60*1000)location.reload()});
+// 同じタブで記事を開いて「戻る」したとき、既読を反映し直す
+window.addEventListener("pageshow",e=>{if(e.persisted){read=new Set(store.get("read",[]));bm=store.get("bm",{});render()}});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 render();
 </script></body></html>"""

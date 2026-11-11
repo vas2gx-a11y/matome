@@ -289,8 +289,7 @@ nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>
  <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 {{UPDATED}} ↻</button>
- <button class="btn" id="sitesBtn">登録サイト</button>
- <button class="btn" id="allRead">全部既読</button></div>
+ <button class="btn" id="sitesBtn">登録サイト</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
 </header>
 <div class="err">{{ERRORS}}</div>
@@ -347,7 +346,7 @@ function render(){
  $("ttl").textContent={latest:"最新",rec:"おすすめ",cat:"カテゴリー",bm:"ブックマーク",sites:"登録サイト"}[tab];
  $("q").style.display=$("more").style.display=tab==="sites"?"none":"";
  if(tab==="sites"){$("hint").style.display="block";$("hint").textContent=`${SITES.length}サイト登録中。最終更新が7日以上前のサイトは赤で表示します`;
-  $("allRead").style.visibility="hidden";$("chips").style.display="none";
+  $("chips").style.display="none";
   const fmt=ts=>{if(!ts)return"記事なし";const d=new Date(ts*1000);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
   $("list").innerHTML=CATS.order.map(c=>{const ss=SITES.filter(x=>x.cat===c);if(!ss.length)return"";
    return `<div class="cathead">${esc(c)}</div>`+ss.map(x=>{const stale=!x.last||Date.now()/1000-x.last>7*86400;
@@ -358,7 +357,6 @@ function render(){
  document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;store.set("cat",cat);shown=60;window.scrollTo(0,0);render()});
  $("hint").style.display=tab==="rec"?"block":"none";
  $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間）";
- $("allRead").style.visibility=tab==="bm"?"hidden":"visible";
  $("list").innerHTML=list.length?list.slice(0,shown).map(i=>{const r=read.has(i.link);return `<li class="${r?"read":"unread"}"><div class="row"><a class="m" ${href(i.link)} data-l="${esc(i.link)}">
  ${i.img?`<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${esc(i.img)}" onerror="this.style.visibility='hidden'">`:`<div class="thumb"></div>`}
  <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
@@ -374,7 +372,6 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.
 $("sitesBtn").onclick=()=>{tab="sites";window.scrollTo(0,0);render()};
 $("q").oninput=()=>{shown=60;render()};
 $("more").onclick=()=>{shown+=60;render()};
-$("allRead").onclick=()=>{if(!confirm("表示中の記事をすべて既読にしますか？"))return;ITEMS.forEach(i=>read.add(i.link));saveRead();render()};
 $("reload").onclick=()=>location.reload();
 // アプリ版は再読み込みボタンがないので、15分以上離れてから戻ったら自動で最新にする
 let hiddenAt=0;

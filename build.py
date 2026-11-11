@@ -17,6 +17,8 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).parent
 DOCS = ROOT / "docs"
 DATA = DOCS / "items.json"
+ARCH = DOCS / "archive"     # 日付別の保存（archive/2026-11-11.json）
+ARCHIVE_DAYS = 90           # 何日分さかのぼれるようにするか
 SITES = DOCS / "sites.json"   # サイトごとの最終更新（取得失敗時は前回の値を使う）
 JST = timezone(timedelta(hours=9))
 KEEP_DAYS = 3          # 何日分の記事を残すか
@@ -160,6 +162,38 @@ def get_one(feed):
     except Exception as e:
         return [], f"{name or url}: {e}"
 
+# ---------- 日付別アーカイブ ----------
+def update_archive(items):
+    """記事を公開日（日本時間）ごとのファイルに追記し、古い日付は削除。日付一覧を返す"""
+    ARCH.mkdir(parents=True, exist_ok=True)
+    by_day = {}
+    for i in items:
+        d = datetime.fromtimestamp(i["ts"], JST).strftime("%Y-%m-%d")
+        by_day.setdefault(d, []).append({k: i[k] for k in ("title", "link", "blog", "ts", "img") if k in i})
+    for d, its in by_day.items():
+        f = ARCH / f"{d}.json"
+        cur = {}
+        if f.exists():
+            try:
+                cur = {x["link"]: x for x in json.loads(f.read_text(encoding="utf-8"))}
+            except Exception:
+                pass
+        cur.update({x["link"]: x for x in its})
+        text = json.dumps(sorted(cur.values(), key=lambda x: x["ts"], reverse=True), ensure_ascii=False)
+        if not f.exists() or f.read_text(encoding="utf-8") != text:
+            f.write_text(text, encoding="utf-8")
+    oldest = (datetime.now(JST) - timedelta(days=ARCHIVE_DAYS)).strftime("%Y-%m-%d")
+    days = []
+    for f in sorted(ARCH.glob("*.json"), reverse=True):
+        if f.stem < oldest:
+            f.unlink()
+            continue
+        try:
+            days.append({"d": f.stem, "n": len(json.loads(f.read_text(encoding="utf-8")))})
+        except Exception:
+            pass
+    return days
+
 # ---------- 重複まとめ ----------
 def norm(title):
     t = re.sub(r"【[^】]*】|\[[^\]]*\]|（[^）]*）|\([^)]*\)", "", title)
@@ -216,11 +250,13 @@ def main():
     merged = merged[:MAX_ITEMS]
 
     DOCS.mkdir(exist_ok=True)
+    days = update_archive(items)
     SITES.write_text(json.dumps(sites, ensure_ascii=False), encoding="utf-8")
     DATA.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
     page = TEMPLATE.replace("/*DATA*/", json.dumps(merged, ensure_ascii=False).replace("</", "<\\/"))
     cat_order = list(dict.fromkeys(list(CATS.values()) + [DEFAULT_CAT]))
     page = page.replace("/*CATS*/", json.dumps({"map": CATS, "order": cat_order}, ensure_ascii=False).replace("</", "<\\/"))
+    page = page.replace("/*DAYS*/", json.dumps(days))
     page = page.replace("/*SITES*/", json.dumps(sites, ensure_ascii=False).replace("</", "<\\/"))
     page = page.replace("{{UPDATED}}", datetime.now(JST).strftime("%m/%d %H:%M"))
     page = page.replace("{{ERRORS}}", html.escape(" / ".join(errors)))
@@ -295,6 +331,7 @@ nav button.on{color:var(--accent);font-weight:600}
 <div class="err">{{ERRORS}}</div>
 <div class="hint" id="hint"></div>
 <div class="chips" id="chips"></div>
+<div class="chips" id="days"></div>
 <ul id="list"></ul>
 <button id="more">もっと見る</button>
 <nav>
@@ -307,6 +344,12 @@ nav button.on{color:var(--accent);font-weight:600}
 const ITEMS=/*DATA*/;
 const CATS=/*CATS*/;
 const SITES=/*SITES*/;
+const DAYS=/*DAYS*/;   // [{d:"2026-11-11",n:件数}, ...] 新しい順
+let day="",dayData={};  // day=""は「すべて（直近3日）」
+function loadDay(d){if(dayData[d])return;dayData[d]="loading";
+ fetch("archive/"+d+".json").then(r=>r.json()).then(x=>{dayData[d]=x;render()}).catch(()=>{dayData[d]=[];render()})}
+function dayLabel(d){const t=new Date(),y=new Date(Date.now()-86400000),f=x=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+ if(d===f(t))return"今日";if(d===f(y))return"昨日";const x=new Date(d+"T00:00:00");return `${x.getMonth()+1}/${x.getDate()}(${"日月火水木金土"[x.getDay()]})`}
 const catOf=i=>CATS.map[i.blog]||"総合・雑談";
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let read=new Set(store.get("read",[])),bm=store.get("bm",{}),tab=store.get("tab","latest"),shown=60,cat=store.get("cat",CATS.order[0]);
@@ -338,6 +381,7 @@ function source(){
  if(tab==="bm")return Object.values(bm).sort((a,b)=>b.saved-a.saved);
  if(tab==="cat")return ITEMS.filter(i=>catOf(i)===cat);
  if(tab==="rec")return hist.length<10?ITEMS:recommend();
+ if(day){loadDay(day);return Array.isArray(dayData[day])?dayData[day]:[]}
  return ITEMS}
 function render(){
  const q=$("q").value.trim();
@@ -346,12 +390,15 @@ function render(){
  $("ttl").textContent={latest:"最新",rec:"おすすめ",cat:"カテゴリー",bm:"ブックマーク",sites:"登録サイト"}[tab];
  $("q").style.display=$("more").style.display=tab==="sites"?"none":"";
  if(tab==="sites"){$("hint").style.display="block";$("hint").textContent=`${SITES.length}サイト登録中。最終更新が7日以上前のサイトは赤で表示します`;
-  $("chips").style.display="none";
+  $("chips").style.display="none";$("days").style.display="none";
   const fmt=ts=>{if(!ts)return"記事なし";const d=new Date(ts*1000);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
   $("list").innerHTML=CATS.order.map(c=>{const ss=SITES.filter(x=>x.cat===c);if(!ss.length)return"";
    return `<div class="cathead">${esc(c)}</div>`+ss.map(x=>{const stale=!x.last||Date.now()/1000-x.last>7*86400;
     return `<div class="site${stale?" stale":""}"><span>${esc(x.name)}</span><span class="last">${x.err?"取得失敗・":""}${fmt(x.last)}</span></div>`}).join("")}).join("");
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));return}
+ $("days").style.display=tab==="latest"?"flex":"none";
+ $("days").innerHTML=`<button class="${day?"":"on"}" data-d="">すべて</button>`+DAYS.map(x=>`<button class="${x.d===day?"on":""}" data-d="${x.d}">${dayLabel(x.d)}（${x.n}）</button>`).join("");
+ document.querySelectorAll("#days button").forEach(b=>b.onclick=()=>{day=b.dataset.d;shown=60;window.scrollTo(0,0);render()});
  $("chips").style.display=tab==="cat"?"flex":"none";
  $("chips").innerHTML=CATS.order.map(c=>`<button class="${c===cat?"on":""}" data-c="${esc(c)}">${esc(c)}（${ITEMS.filter(i=>catOf(i)===c).length}）</button>`).join("");
  document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;store.set("cat",cat);shown=60;window.scrollTo(0,0);render()});
@@ -362,7 +409,7 @@ function render(){
  <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
  <button class="star${bm[i.link]?" on":""}" data-l="${esc(i.link)}" aria-label="ブックマーク">★</button></div>
  ${i.dups?`<div class="dups">他でも: ${i.dups.map(d=>`<a ${href(d.link)}>${esc(d.blog)}</a>`).join("")}</div>`:""}</li>`}).join("")
- :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":"記事がありません"}</div>`;
+ :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":tab==="latest"&&day&&dayData[day]==="loading"?"読み込み中…":"記事がありません"}</div>`;
  $("more").style.display=list.length>shown?"block":"none";
  document.querySelectorAll("a.m").forEach(a=>a.onclick=()=>{if(!read.has(a.dataset.l))addHist(ITEMS.find(i=>i.link===a.dataset.l));read.add(a.dataset.l);saveRead();setTimeout(render,300)});
  document.querySelectorAll(".star").forEach(b=>b.onclick=()=>{const l=b.dataset.l;

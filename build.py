@@ -7,6 +7,7 @@ import concurrent.futures as cf
 import html
 import json
 import re
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -212,6 +213,7 @@ def main():
             pass
 
     new, errors = [], []
+    ERR_GRACE = 2 * 3600   # 最後に取れてから2時間以内の一時的な失敗はページに出さない
     prev_sites = {}
     if SITES.exists():
         try:
@@ -222,12 +224,16 @@ def main():
     with cf.ThreadPoolExecutor(8) as ex:
         for (name, url), (items, err) in zip(feeds, ex.map(get_one, feeds)):
             new += items
-            if err:
-                errors.append(err)
             label = name or (items[0]["blog"] if items else url)
-            last = max((i["ts"] for i in items), default=None) or prev_sites.get(label, {}).get("last")
+            prev = prev_sites.get(label, {})
+            last = max((i["ts"] for i in items), default=None) or prev.get("last")
+            ok_at = int(time.time()) if not err else prev.get("ok", 0)
+            if err:
+                print("  ⚠", err)
+                if time.time() - ok_at > ERR_GRACE:
+                    errors.append(err)
             sites.append({"name": label, "url": url, "cat": CATS.get(name, DEFAULT_CAT),
-                          "last": last, "err": bool(err)})
+                          "last": last, "err": bool(err), "ok": ok_at})
 
     cutoff = int((datetime.now(JST) - timedelta(days=KEEP_DAYS)).timestamp())
     now = int(datetime.now(JST).timestamp()) + 600
@@ -262,8 +268,6 @@ def main():
     page = page.replace("{{ERRORS}}", html.escape(" / ".join(errors)))
     (DOCS / "index.html").write_text(page, encoding="utf-8")
     print(f"{len(merged)}件 出力（取得{len(new)}件, エラー{len(errors)}件）")
-    for e in errors:
-        print("  ⚠", e)
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ja"><head>

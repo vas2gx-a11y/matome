@@ -47,6 +47,14 @@ li.read .t{color:var(--read)}
 .site .last{flex:none;font-size:12px;color:var(--sub)}
 .site.stale .last{color:#ff453a}
 .cathead{padding:14px 12px 6px;font-size:12px;font-weight:600;color:var(--sub)}
+.daybar{display:none;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--line)}
+.daybar button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:6px 12px;font-size:14px}
+.daybar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.daybar button:disabled{opacity:.3}
+.dpick{position:relative;flex:1;text-align:center;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:6px 8px;font-size:14px;font-weight:600}
+.dpick.off{font-weight:400;color:var(--sub)}
+.dpick input{position:absolute;inset:0;opacity:0;width:100%;font-size:16px}
+li.hourhead{background:var(--bg);padding:10px 12px 4px;font-size:12px;font-weight:600;color:var(--sub);border-bottom:none}
 .err{font-size:11px;color:#ff453a;padding:8px 12px}
 .err:empty{display:none}
 .btn{border:none;background:none;color:var(--accent);font-size:13px;padding:4px}
@@ -57,14 +65,19 @@ nav button{flex:1;border:none;background:none;padding:10px 0;font-size:13px;colo
 nav button.on{color:var(--accent);font-weight:600}
 </style></head><body>
 <header>
- <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 11/11 15:15 ↻</button>
+ <div class="top"><h1 id="ttl">最新</h1><button class="upd btn" id="reload" aria-label="再読み込み">更新 11/11 15:27 ↻</button>
  <button class="btn" id="sitesBtn">登録サイト</button></div>
  <input id="q" type="search" placeholder="キーワードで絞り込み">
 </header>
 <div class="err"></div>
 <div class="hint" id="hint"></div>
 <div class="chips" id="chips"></div>
-<div class="chips" id="days"></div>
+<div class="daybar" id="days">
+ <button id="dRecent">直近</button>
+ <button id="dPrev" aria-label="前の日">‹</button>
+ <label class="dpick"><span id="dLabel"></span><input type="date" id="dInput"></label>
+ <button id="dNext" aria-label="次の日">›</button>
+</div>
 <ul id="list"></ul>
 <button id="more">もっと見る</button>
 <nav>
@@ -130,16 +143,27 @@ function render(){
     return `<div class="site${stale?" stale":""}"><span>${esc(x.name)}</span><span class="last">${x.err?"取得失敗・":""}${fmt(x.last)}</span></div>`}).join("")}).join("");
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));return}
  $("days").style.display=tab==="latest"?"flex":"none";
- $("days").innerHTML=`<button class="${day?"":"on"}" data-d="">すべて</button>`+DAYS.map(x=>`<button class="${x.d===day?"on":""}" data-d="${x.d}">${dayLabel(x.d)}（${x.n}）</button>`).join("");
- document.querySelectorAll("#days button").forEach(b=>b.onclick=()=>{day=b.dataset.d;shown=60;window.scrollTo(0,0);render()});
+ // 日付バー：直近／‹ 前の日／日付（タップでカレンダー）／次の日 ›
+ const di=DAYS.findIndex(x=>x.d===day);
+ $("dRecent").classList.toggle("on",!day);
+ $("dPrev").disabled=day?di>=DAYS.length-1:!DAYS.length;
+ $("dNext").disabled=!day||di<=0;
+ $("dLabel").textContent=day?`${dayLabel(day)}・${di>=0?DAYS[di].n:0}件`:"📅 日付で見る";
+ $("dLabel").parentNode.classList.toggle("off",!day);
+ if(DAYS.length){$("dInput").min=DAYS[DAYS.length-1].d;$("dInput").max=DAYS[0].d}
+ $("dInput").value=day||(DAYS[0]&&DAYS[0].d)||"";
  $("chips").style.display=tab==="cat"?"flex":"none";
  $("chips").innerHTML=CATS.order.map(c=>`<button class="${c===cat?"on":""}" data-c="${esc(c)}">${esc(c)}（${ITEMS.filter(i=>catOf(i)===c).length}）</button>`).join("");
  document.querySelectorAll("#chips button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;store.set("cat",cat);shown=60;window.scrollTo(0,0);render()});
  $("hint").style.display=tab==="rec"?"block":"none";
  $("hint").textContent=hist.length<10?`記事を読むほど好みに合わせて並びます（あと${10-hist.length}件読むと開始）`:"よく読むブログ・話題が近い順（直近48時間）";
- $("list").innerHTML=list.length?list.slice(0,shown).map(i=>{const r=read.has(i.link);return `<li class="${r?"read":"unread"}"><div class="row"><a class="m" ${href(i.link)} data-l="${esc(i.link)}">
+ const byDay=tab==="latest"&&day;let hh=-1;
+ const hm=ts=>{const d=new Date(ts*1000);return `${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`};
+ $("list").innerHTML=list.length?list.slice(0,shown).map(i=>{const r=read.has(i.link);let head="";
+  if(byDay){const h=new Date(i.ts*1000).getHours();if(h!==hh){hh=h;head=`<li class="hourhead">${h}時台</li>`}}
+  return `${head}<li class="${r?"read":"unread"}"><div class="row"><a class="m" ${href(i.link)} data-l="${esc(i.link)}">
  ${i.img?`<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${esc(i.img)}" onerror="this.style.visibility='hidden'">`:`<div class="thumb"></div>`}
- <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
+ <div><div class="t">${r?"":'<span class="dot"></span>'}${esc(i.title)}</div><div class="meta">${esc(i.blog)}・${byDay?hm(i.ts):ago(i.ts)}${i.why?` <span class="why">${esc(i.why)}</span>`:""}</div></div></a>
  <button class="star${bm[i.link]?" on":""}" data-l="${esc(i.link)}" aria-label="ブックマーク">★</button></div>
  ${i.dups?`<div class="dups">他でも: ${i.dups.map(d=>`<a ${href(d.link)}>${esc(d.blog)}</a>`).join("")}</div>`:""}</li>`}).join("")
  :`<div class="empty">${tab==="bm"?"★を押すとここに保存されます":tab==="latest"&&day&&dayData[day]==="loading"?"読み込み中…":"記事がありません"}</div>`;
@@ -149,6 +173,11 @@ function render(){
   if(bm[l])delete bm[l];else{const it=ITEMS.find(i=>i.link===l);if(it){const{dups,score,why,...x}=it;bm[l]={...x,saved:Date.now()};addHist(it,2)}}
   store.set("bm",bm);render()})}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;store.set("tab",tab);shown=60;window.scrollTo(0,0);render()});
+const goDay=d=>{day=d;shown=60;window.scrollTo(0,0);render()};
+$("dRecent").onclick=()=>goDay("");
+$("dPrev").onclick=()=>{const i=DAYS.findIndex(x=>x.d===day);goDay(day?DAYS[i+1].d:DAYS[0].d)};
+$("dNext").onclick=()=>{const i=DAYS.findIndex(x=>x.d===day);goDay(DAYS[i-1].d)};
+$("dInput").onchange=()=>{const v=$("dInput").value;if(v)goDay(v)};
 $("sitesBtn").onclick=()=>{tab="sites";window.scrollTo(0,0);render()};
 $("q").oninput=()=>{shown=60;render()};
 $("more").onclick=()=>{shown+=60;render()};

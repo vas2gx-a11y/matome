@@ -24,6 +24,15 @@ ITmedia NEWS | https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml | IT・ガジ�
 footballnet【サッカーまとめ】 | http://footballnet.2chblog.jp/ | スポーツ
 NO FOOTY NO LIFE | https://nofootynolife.net/?xml | スポーツ
 
+# --- ゲーム ---
+はちま起稿 | http://blog.esuteru.com/ | ゲーム
+オレ的ゲーム速報＠刃 | http://jin115.com/ | ゲーム
+ゲームキャスト | https://www.gamecast-blog.com/ | ゲーム
+4Gamer.net | https://www.4gamer.net/rss/index.xml | ゲーム
+GAME Watch | https://game.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf | ゲーム
+AUTOMATON | https://automaton-media.com/feed/ | ゲーム
+Game*Spark | https://www.gamespark.jp/rss/index.rdf | ゲーム
+
 # --- 生活・料理 ---
 ライフハックちゃんねる弐式 | http://lifehack2ch.livedoor.biz/ | 生活・料理
 お料理速報 | http://oryouri.2chblog.jp/ | 生活・料理
